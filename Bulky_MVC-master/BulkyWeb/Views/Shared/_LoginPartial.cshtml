@@ -1,0 +1,28 @@
+﻿@using Microsoft.AspNetCore.Identity        @* This page is added when scaffolding Identity *@
+
+@* These are injected *@
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+
+<ul class="navbar-nav">
+@if (SignInManager.IsSignedIn(User))        @* If user is signed in, then we have the log out link and details link to manage the user *@
+{
+    <li class="nav-item">
+        <a id="manage" class="nav-link " asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @UserManager.GetUserName(User)!</a>
+    </li>
+    <li class="nav-item">
+        <form id="logoutForm" class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+            <button id="logout" type="submit" class="nav-link btn btn-link border-0">Logout</button>
+        </form>
+    </li>
+}
+else
+{
+    <li class="nav-item">
+        <a class="nav-link " id="register" asp-area="Identity" asp-page="/Account/Register">Register</a>    @* asp-pageis correct coz this is razer. So no controller and action*@
+    </li>
+    <li class="nav-item">
+        <a class="nav-link " id="login" asp-area="Identity" asp-page="/Account/Login">Login</a>
+    </li>
+}
+</ul>

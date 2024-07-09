@@ -1,0 +1,50 @@
+﻿@model IEnumerable<Product>
+
+<div class="row pb-3">      @* Class of row and padding bottom 3. So one big row *@
+    @foreach (var product in Model)
+    {
+        <div class="col-lg-3 col-sm-6">     @* lg = large; sm = small *@
+            <div class="row p-2">           @* p is padding *@
+                <div class="col-12 p-1">    @* full access to the columns inside the lg-3 or sm-6 *@
+                    <div class="card border-0 p-3 shadow  border-top border-5 rounded">     @* Card of padding 3 shadow and rounded. We do not specify how big it is going to be so it's auto *@
+                        @if(product.ProductImages!=null && product.ProductImages.Count() > 0) {
+                            <img src="@product.ProductImages.FirstOrDefault().ImageUrl" class="card-img-top rounded" />     @* Show image and it's gonna be card-img on top and it will be rounded *@
+                        }
+                        else {
+                            <img src="https://placehold.co/500x600/png" class="card-img-top rounded" />
+                        }
+                        
+                        <div class="card-body pb-0">        @* Card body and padding bottom is 0 *@
+                            <div class="pl-1">              @*  In padding left 1 space, so between them. Here we will have title and author *@
+                                <p class="card-title h5 text-dark opacity-75 text-uppercase text-center">@product.Title</p>     @*  First line *@
+                                <p class="card-title text-warning text-center">by <b>@product.Author</b></p>                    @*  Second line *@
+                            </div>
+                            <div class="pl-1">
+                                <p class="text-dark text-opacity-75 text-center mb-0">      @*  Remove the margin *@
+                                    List Price: 
+                                    <span class="text-decoration-line-through">         @*  Adds a line through*@
+                                        @product.ListPrice.ToString("c")
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="pl-1">
+                                <p class="text-dark text-opacity-75 text-center">As low as: 
+                                    <span>
+                                        @product.Price100.ToString("c")             @* The price *@
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <div>                                                       @*  Details button. Product ID is passed as parameeter. Rule: asp-route-{arg1} where arg1 has to be equal to arg in view *@
+                            <a asp-action="Details"
+                            asp-route-productId="@product.Id"                       
+                            class="btn btn-primary bg-gradient border-0 form-control">
+                                Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
