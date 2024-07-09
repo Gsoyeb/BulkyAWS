@@ -3,42 +3,54 @@ using BulkyBook.Models;
 using BulkyBook.Models.ViewModels;
 using BulkyBook.Utility;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
 using Stripe.Checkout;
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace BulkyBookWeb.Areas.Admin.Controllers {
-	[Area("admin")]
-    [Authorize]
-	public class OrderController : Controller {
+namespace BulkyBookWeb.Areas.Admin.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    // [Authorize]
+    public class OrderController : ControllerBase
+    {
+        private readonly IUnitOfWork _unitOfWork;
 
-
-		private readonly IUnitOfWork _unitOfWork;
         [BindProperty]
         public OrderVM OrderVM { get; set; }
+
         public OrderController(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
         }
 
-        public IActionResult Index() {
-            return View();
+        [HttpGet("Index")]
+        public IActionResult Index()
+        {
+            return Ok("Order Controller is working.");
         }
 
-        public IActionResult Details(int orderId) {
-            OrderVM = new() {
+        [HttpGet("Details/{orderId}")]
+        public IActionResult Details(int orderId)
+        {
+            OrderVM = new()
+            {
                 OrderHeader = _unitOfWork.OrderHeader.Get(u => u.Id == orderId, includeProperties: "ApplicationUser"),
                 OrderDetail = _unitOfWork.OrderDetail.GetAll(u => u.OrderHeaderId == orderId, includeProperties: "Product")
             };
 
-            return View(OrderVM);
+            return Ok(OrderVM);
         }
-        [HttpPost]
-        [Authorize(Roles =SD.Role_Admin+","+SD.Role_Employee)]
-        public IActionResult UpdateOrderDetail() {
+
+        [HttpPost("UpdateOrderDetail")]
+        // [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employee)]
+        public IActionResult UpdateOrderDetail()
+        {
             var orderHeaderFromDb = _unitOfWork.OrderHeader.Get(u => u.Id == OrderVM.OrderHeader.Id);
             orderHeaderFromDb.Name = OrderVM.OrderHeader.Name;
             orderHeaderFromDb.PhoneNumber = OrderVM.OrderHeader.PhoneNumber;
@@ -46,57 +58,58 @@ namespace BulkyBookWeb.Areas.Admin.Controllers {
             orderHeaderFromDb.City = OrderVM.OrderHeader.City;
             orderHeaderFromDb.State = OrderVM.OrderHeader.State;
             orderHeaderFromDb.PostalCode = OrderVM.OrderHeader.PostalCode;
-            if (!string.IsNullOrEmpty(OrderVM.OrderHeader.Carrier)) {
+            if (!string.IsNullOrEmpty(OrderVM.OrderHeader.Carrier))
+            {
                 orderHeaderFromDb.Carrier = OrderVM.OrderHeader.Carrier;
             }
-            if (!string.IsNullOrEmpty(OrderVM.OrderHeader.TrackingNumber)) {
+            if (!string.IsNullOrEmpty(OrderVM.OrderHeader.TrackingNumber))
+            {
                 orderHeaderFromDb.Carrier = OrderVM.OrderHeader.TrackingNumber;
             }
             _unitOfWork.OrderHeader.Update(orderHeaderFromDb);
             _unitOfWork.Save();
 
-            TempData["Success"] = "Order Details Updated Successfully.";
-
-
-            return RedirectToAction(nameof(Details), new {orderId= orderHeaderFromDb.Id});
+            return Ok(new { success = true, message = "Order Details Updated Successfully." });
         }
 
-
-        [HttpPost]
-        [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employee)]
-        public IActionResult StartProcessing() {
+        [HttpPost("StartProcessing")]
+        // [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employee)]
+        public IActionResult StartProcessing()
+        {
             _unitOfWork.OrderHeader.UpdateStatus(OrderVM.OrderHeader.Id, SD.StatusInProcess);
             _unitOfWork.Save();
-            TempData["Success"] = "Order Details Updated Successfully.";
-            return RedirectToAction(nameof(Details), new { orderId = OrderVM.OrderHeader.Id });
+            return Ok(new { success = true, message = "Order Status Updated to In Process." });
         }
 
-        [HttpPost]
-        [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employee)]
-        public IActionResult ShipOrder() {
-
+        [HttpPost("ShipOrder")]
+        // [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employee)]
+        public IActionResult ShipOrder()
+        {
             var orderHeader = _unitOfWork.OrderHeader.Get(u => u.Id == OrderVM.OrderHeader.Id);
             orderHeader.TrackingNumber = OrderVM.OrderHeader.TrackingNumber;
             orderHeader.Carrier = OrderVM.OrderHeader.Carrier;
             orderHeader.OrderStatus = SD.StatusShipped;
             orderHeader.ShippingDate = DateTime.Now;
-            if (orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment) {
+            if (orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment)
+            {
                 orderHeader.PaymentDueDate = DateTime.Now.AddDays(30);
             }
 
             _unitOfWork.OrderHeader.Update(orderHeader);
             _unitOfWork.Save();
-            TempData["Success"] = "Order Shipped Successfully.";
-            return RedirectToAction(nameof(Details), new { orderId = OrderVM.OrderHeader.Id });
+            return Ok(new { success = true, message = "Order Shipped Successfully." });
         }
-        [HttpPost]
-        [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employee)]
-        public IActionResult CancelOrder() {
 
+        [HttpPost("CancelOrder")]
+        // [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employee)]
+        public IActionResult CancelOrder()
+        {
             var orderHeader = _unitOfWork.OrderHeader.Get(u => u.Id == OrderVM.OrderHeader.Id);
 
-            if (orderHeader.PaymentStatus == SD.PaymentStatusApproved) {
-                var options = new RefundCreateOptions {
+            if (orderHeader.PaymentStatus == SD.PaymentStatusApproved)
+            {
+                var options = new RefundCreateOptions
+                {
                     Reason = RefundReasons.RequestedByCustomer,
                     PaymentIntent = orderHeader.PaymentIntentId
                 };
@@ -106,41 +119,40 @@ namespace BulkyBookWeb.Areas.Admin.Controllers {
 
                 _unitOfWork.OrderHeader.UpdateStatus(orderHeader.Id, SD.StatusCancelled, SD.StatusRefunded);
             }
-            else {
+            else
+            {
                 _unitOfWork.OrderHeader.UpdateStatus(orderHeader.Id, SD.StatusCancelled, SD.StatusCancelled);
             }
             _unitOfWork.Save();
-            TempData["Success"] = "Order Cancelled Successfully.";
-            return RedirectToAction(nameof(Details), new { orderId = OrderVM.OrderHeader.Id });
-
+            return Ok(new { success = true, message = "Order Cancelled Successfully." });
         }
 
-
-
-        [ActionName("Details")]
-        [HttpPost]
-        public IActionResult Details_PAY_NOW() 
+        [HttpPost("Details_PAY_NOW")]
+        public IActionResult Details_PAY_NOW()
         {
-            OrderVM.OrderHeader = _unitOfWork.OrderHeader
-                .Get(u => u.Id == OrderVM.OrderHeader.Id, includeProperties: "ApplicationUser");
-            OrderVM.OrderDetail = _unitOfWork.OrderDetail
-                .GetAll(u => u.OrderHeaderId == OrderVM.OrderHeader.Id, includeProperties: "Product");
+            OrderVM.OrderHeader = _unitOfWork.OrderHeader.Get(u => u.Id == OrderVM.OrderHeader.Id, includeProperties: "ApplicationUser");
+            OrderVM.OrderDetail = _unitOfWork.OrderDetail.GetAll(u => u.OrderHeaderId == OrderVM.OrderHeader.Id, includeProperties: "Product");
 
-            //stripe logic
+            // stripe logic
             var domain = Request.Scheme + "://" + Request.Host.Value + "/";
-            var options = new SessionCreateOptions {
+            var options = new SessionCreateOptions
+            {
                 SuccessUrl = domain + $"admin/order/PaymentConfirmation?orderHeaderId={OrderVM.OrderHeader.Id}",
                 CancelUrl = domain + $"admin/order/details?orderId={OrderVM.OrderHeader.Id}",
                 LineItems = new List<SessionLineItemOptions>(),
                 Mode = "payment",
             };
 
-            foreach (var item in OrderVM.OrderDetail) {
-                var sessionLineItem = new SessionLineItemOptions {
-                    PriceData = new SessionLineItemPriceDataOptions {
+            foreach (var item in OrderVM.OrderDetail)
+            {
+                var sessionLineItem = new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
                         UnitAmount = (long)(item.Price * 100), // $20.50 => 2050
                         Currency = "usd",
-                        ProductData = new SessionLineItemPriceDataProductDataOptions {
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
                             Name = item.Product.Title
                         }
                     },
@@ -148,7 +160,6 @@ namespace BulkyBookWeb.Areas.Admin.Controllers {
                 };
                 options.LineItems.Add(sessionLineItem);
             }
-
 
             var service = new SessionService();
             Session session = service.Create(options);
@@ -158,51 +169,48 @@ namespace BulkyBookWeb.Areas.Admin.Controllers {
             return new StatusCodeResult(303);
         }
 
-        public IActionResult PaymentConfirmation(int orderHeaderId) {
-
+        [HttpGet("PaymentConfirmation")]
+        public IActionResult PaymentConfirmation(int orderHeaderId)
+        {
             OrderHeader orderHeader = _unitOfWork.OrderHeader.Get(u => u.Id == orderHeaderId);
-            if (orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment) {
-                //this is an order by company
-
+            if (orderHeader.PaymentStatus == SD.PaymentStatusDelayedPayment)
+            {
+                // this is an order by company
                 var service = new SessionService();
                 Session session = service.Get(orderHeader.SessionId);
 
-                if (session.PaymentStatus.ToLower() == "paid") {
+                if (session.PaymentStatus.ToLower() == "paid")
+                {
                     _unitOfWork.OrderHeader.UpdateStripePaymentID(orderHeaderId, session.Id, session.PaymentIntentId);
                     _unitOfWork.OrderHeader.UpdateStatus(orderHeaderId, orderHeader.OrderStatus, SD.PaymentStatusApproved);
                     _unitOfWork.Save();
                 }
-
-
             }
 
-
-            return View(orderHeaderId);
+            return Ok(new { success = true, message = "Payment Confirmation Successful.", orderHeaderId = orderHeaderId });
         }
-
-
 
         #region API CALLS
 
-        [HttpGet]
-		public IActionResult GetAll(string status) {
+        [HttpGet("GetAll")]
+        public IActionResult GetAll(string status)
+        {
             IEnumerable<OrderHeader> objOrderHeaders;
 
-
-            if(User.IsInRole(SD.Role_Admin)|| User.IsInRole(SD.Role_Employee)) {
+            if (User.IsInRole(SD.Role_Admin) || User.IsInRole(SD.Role_Employee))
+            {
                 objOrderHeaders = _unitOfWork.OrderHeader.GetAll(includeProperties: "ApplicationUser").ToList();
             }
-            else {
-
+            else
+            {
                 var claimsIdentity = (ClaimsIdentity)User.Identity;
                 var userId = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier).Value;
 
-                objOrderHeaders = _unitOfWork.OrderHeader
-                    .GetAll(u => u.ApplicationUserId == userId, includeProperties: "ApplicationUser");
+                objOrderHeaders = _unitOfWork.OrderHeader.GetAll(u => u.ApplicationUserId == userId, includeProperties: "ApplicationUser");
             }
 
-
-            switch (status) {
+            switch (status)
+            {
                 case "pending":
                     objOrderHeaders = objOrderHeaders.Where(u => u.PaymentStatus == SD.PaymentStatusDelayedPayment);
                     break;
@@ -217,14 +225,11 @@ namespace BulkyBookWeb.Areas.Admin.Controllers {
                     break;
                 default:
                     break;
-
             }
 
+            return Ok(new { data = objOrderHeaders });
+        }
 
-            return Json(new { data = objOrderHeaders });
-		}
-
-
-		#endregion
-	}
+        #endregion
+    }
 }

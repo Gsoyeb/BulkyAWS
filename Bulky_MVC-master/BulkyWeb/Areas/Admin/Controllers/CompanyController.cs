@@ -1,100 +1,93 @@
 ﻿using BulkyBook.DataAccess.Repository.IRepository;
-using BulkyBook.DataAcess.Data;
 using BulkyBook.Models;
-using BulkyBook.Models.ViewModels;
 using BulkyBook.Utility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
-using System.Data;
+using System.Linq;
 
 namespace BulkyBookWeb.Areas.Admin.Controllers
 {
-    [Area("Admin")]
-    [Authorize(Roles = SD.Role_Admin)]
-    public class CompanyController : Controller
+    [Route("api/[controller]")]
+    [ApiController]
+    public class CompanyController : ControllerBase
     {
         private readonly IUnitOfWork _unitOfWork;
         public CompanyController(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
         }
-        public IActionResult Index() 
+
+        [HttpGet]
+        public IActionResult Index()
         {
             List<Company> objCompanyList = _unitOfWork.Company.GetAll().ToList();
-           
-            return View(objCompanyList);
+            return Ok(objCompanyList);
         }
 
+        [HttpGet("{id}")]
         public IActionResult Upsert(int? id)
         {
-           
             if (id == null || id == 0)
             {
-                //create
-                return View(new Company());
+                // Create
+                return Ok(new Company());
             }
             else
             {
-                //update
-                Company companyObj = _unitOfWork.Company.Get(u=>u.Id==id);
-                return View(companyObj);
+                // Update
+                Company companyObj = _unitOfWork.Company.Get(u => u.Id == id);
+                if (companyObj == null)
+                {
+                    return NotFound(new { success = false, message = "Company not found" });
+                }
+                return Ok(companyObj);
             }
-            
         }
+
         [HttpPost]
-        public IActionResult Upsert(Company CompanyObj)
+        public IActionResult Upsert([FromBody] Company companyObj)
         {
             if (ModelState.IsValid)
             {
-                
-                if (CompanyObj.Id == 0)
+                if (companyObj.Id == 0)
                 {
-                    _unitOfWork.Company.Add(CompanyObj);
+                    _unitOfWork.Company.Add(companyObj);
                 }
                 else
                 {
-                    _unitOfWork.Company.Update(CompanyObj);
+                    _unitOfWork.Company.Update(companyObj);
                 }
-                
+
                 _unitOfWork.Save();
-                TempData["success"] = "Company created successfully";
-                return RedirectToAction("Index");
+                return Ok(new { success = true, message = "Company created/updated successfully" });
             }
             else
             {
-                
-                return View(CompanyObj);
+                return BadRequest(ModelState);
             }
         }
 
-
-        #region API CALLS
-
-        [HttpGet]
+        [HttpGet("GetAll")]
         public IActionResult GetAll()
         {
             List<Company> objCompanyList = _unitOfWork.Company.GetAll().ToList();
-            return Json(new { data = objCompanyList });
+            return Ok(new { data = objCompanyList });
         }
 
-
-        [HttpDelete]
-        public IActionResult Delete(int? id)
+        [HttpDelete("{id}")]
+        public IActionResult Delete(int id)
         {
-            var CompanyToBeDeleted = _unitOfWork.Company.Get(u => u.Id == id);
-            if (CompanyToBeDeleted == null)
+            var companyToBeDeleted = _unitOfWork.Company.Get(u => u.Id == id);
+            if (companyToBeDeleted == null)
             {
-                return Json(new { success = false, message = "Error while deleting" });
+                return NotFound(new { success = false, message = "Error while deleting" });
             }
 
-            _unitOfWork.Company.Remove(CompanyToBeDeleted);
+            _unitOfWork.Company.Remove(companyToBeDeleted);
             _unitOfWork.Save();
 
-            return Json(new { success = true, message = "Delete Successful" });
+            return Ok(new { success = true, message = "Delete Successful" });
         }
-
-        #endregion
     }
 }
