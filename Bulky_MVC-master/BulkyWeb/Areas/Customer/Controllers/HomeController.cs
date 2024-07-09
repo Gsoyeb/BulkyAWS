@@ -4,13 +4,16 @@ using BulkyBook.Utility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Security.Claims;
 
 namespace BulkyBookWeb.Areas.Customer.Controllers
 {
-    [Area("Customer")]          // Home Page
-    public class HomeController : Controller
+    [Route("api/[controller]")]
+    [ApiController]
+    public class HomeController : ControllerBase
     {
         private readonly ILogger<HomeController> _logger;
         private readonly IUnitOfWork _unitOfWork;
@@ -21,64 +24,66 @@ namespace BulkyBookWeb.Areas.Customer.Controllers
             _unitOfWork = unitOfWork;       // Dependency injection to get unitOfWork
         }
 
+        [HttpGet("Index")]
         public IActionResult Index()
         {
-            
             IEnumerable<Product> productList = _unitOfWork.Product.GetAll(includeProperties: "Category,ProductImages");
-            return View(productList);
+            return Ok(productList);  // Return JSON response
         }
 
+        [HttpGet("Details/{productId}")]
         public IActionResult Details(int productId)     // When you click on Details Page
         {
-            ShoppingCart cart = new() {
+            ShoppingCart cart = new()
+            {
                 Product = _unitOfWork.Product.Get(u => u.Id == productId, includeProperties: "Category,ProductImages"),
                 Count = 1,
                 ProductId = productId
             };
-            return View(cart);      // Directed to details view
+            return Ok(cart);  // Return JSON response
         }
 
-        [HttpPost]
+        [HttpPost("Details")]
         [Authorize]
-        public IActionResult Details(ShoppingCart shoppingCart) 
+        public IActionResult Details([FromBody] ShoppingCart shoppingCart)
         {
             var claimsIdentity = (ClaimsIdentity)User.Identity;
             var userId = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier).Value;
-            shoppingCart.ApplicationUserId= userId;
+            shoppingCart.ApplicationUserId = userId;
 
-            ShoppingCart cartFromDb = _unitOfWork.ShoppingCart.Get(u=>u.ApplicationUserId == userId &&
-            u.ProductId==shoppingCart.ProductId);
+            ShoppingCart cartFromDb = _unitOfWork.ShoppingCart.Get(u => u.ApplicationUserId == userId &&
+            u.ProductId == shoppingCart.ProductId);
 
-            if (cartFromDb != null) {
+            if (cartFromDb != null)
+            {
                 //shopping cart exists
                 cartFromDb.Count += shoppingCart.Count;
                 _unitOfWork.ShoppingCart.Update(cartFromDb);
                 _unitOfWork.Save();
             }
-            else {
+            else
+            {
                 //add cart record
                 _unitOfWork.ShoppingCart.Add(shoppingCart);
                 _unitOfWork.Save();
                 HttpContext.Session.SetInt32(SD.SessionCart,
                 _unitOfWork.ShoppingCart.GetAll(u => u.ApplicationUserId == userId).Count());
             }
-            TempData["success"] = "Cart updated successfully";
 
-           
-
-
-            return RedirectToAction(nameof(Index));
+            return Ok(new { success = true, message = "Cart updated successfully" });
         }
 
+        [HttpGet("Privacy")]
         public IActionResult Privacy()
         {
-            return View();
+            return Ok("Privacy page");  // Return JSON response
         }
 
+        [HttpGet("Error")]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            return StatusCode(StatusCodes.Status500InternalServerError, new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
     }
 }
