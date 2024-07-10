@@ -54,8 +54,8 @@ builder.Services.AddSession(options => {
 });
 
 // Register application services
-builder.Services.AddScoped<IDbInitializer, DbInitializer>();
-builder.Services.AddRazorPages();  // Needed to support Razor Pages
+// builder.Services.AddScoped<IDbInitializer, DbInitializer>();
+// builder.Services.AddRazorPages();  // Needed to support Razor Pages
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();  // Service for sending emails
 
@@ -89,15 +89,15 @@ app.UseRouting();
 app.UseSession();  // Enable session state
 
 // Seed the database with initial data
-void SeedDatabase()
-{
-    using (var scope = app.Services.CreateScope())
-    {
-        var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
-        dbInitializer.Initialize();
-    }
-}
-SeedDatabase();
+//void SeedDatabase()
+//{
+//    using (var scope = app.Services.CreateScope())
+//    {
+//        var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
+//        dbInitializer.Initialize();
+//    }
+//}
+//SeedDatabase();
 
 // Enable Swagger middleware
 app.UseSwagger();
@@ -107,7 +107,7 @@ app.UseSwaggerUI(c => {
 });
 
 // Map Razor Pages
-app.MapRazorPages();
+// app.MapRazorPages();
 
 // Map default controller route
 app.MapControllerRoute(
