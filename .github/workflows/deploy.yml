@@ -1,0 +1,43 @@
+ 
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main  # Trigger deployment on push to main branch, adjust if needed
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'  # Specify the .NET version
+
+    - name: Restore dependencies
+      run: dotnet restore BulkyWeb/BulkyBookWeb.csproj
+
+    - name: Build
+      run: dotnet build BulkyWeb/BulkyBookWeb.csproj --configuration Release
+
+    - name: Publish
+      run: dotnet publish BulkyWeb/BulkyBookWeb.csproj --configuration Release --output ./app/publish
+
+    - name: Zip the publish directory
+      run: zip -r deploy-package.zip ./app/publish/*
+
+    - name: Deploy to Elastic Beanstalk
+      uses: einaregilsson/beanstalk-deploy@v21
+      with:
+        aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        application_name: <YOUR_APPLICATION_NAME>
+        environment_name: <YOUR_ENVIRONMENT_NAME>
+        region: <YOUR_AWS_REGION>
+        version_label: v${{ github.run_number }}
+        deployment_package: deploy-package.zip
