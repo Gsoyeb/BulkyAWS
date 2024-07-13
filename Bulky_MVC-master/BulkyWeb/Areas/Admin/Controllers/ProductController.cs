@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;  // Import logging
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,15 +19,19 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IWebHostEnvironment _webHostEnvironment;
-        public ProductController(IUnitOfWork unitOfWork, IWebHostEnvironment webHostEnvironment)
+        private readonly ILogger<ProductController> _logger;  // Logger field
+
+        public ProductController(IUnitOfWork unitOfWork, IWebHostEnvironment webHostEnvironment, ILogger<ProductController> logger)
         {
             _unitOfWork = unitOfWork;
             _webHostEnvironment = webHostEnvironment;
+            _logger = logger;  // Assign logger
         }
 
         [HttpGet]
         public IActionResult GetAll()
         {
+            _logger.LogInformation("Getting all products.");
             List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
             return Ok(objProductList);
         }
@@ -34,9 +39,11 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
         [HttpGet("{id}")]
         public IActionResult Get(int id)
         {
+            _logger.LogInformation($"Getting product with id {id}.");
             Product product = _unitOfWork.Product.Get(u => u.Id == id, includeProperties: "Category,ProductImages");
             if (product == null)
             {
+                _logger.LogWarning($"Product with id {id} not found.");
                 return NotFound();
             }
             return Ok(product);
@@ -45,18 +52,23 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
         [HttpPost]
         public IActionResult Upsert([FromForm] ProductVM productVM, [FromForm] List<IFormFile> files)
         {
+            _logger.LogInformation($"Upserting product with id {productVM?.Product?.Id}.");
+
             if (productVM == null || !ModelState.IsValid)
             {
+                _logger.LogWarning("Invalid product model.");
                 return BadRequest(ModelState);
             }
 
             if (productVM.Product.Id == 0)
             {
                 _unitOfWork.Product.Add(productVM.Product);
+                _logger.LogInformation("Product added.");
             }
             else
             {
                 _unitOfWork.Product.Update(productVM.Product);
+                _logger.LogInformation("Product updated.");
             }
 
             _unitOfWork.Save();
@@ -98,15 +110,18 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
                 _unitOfWork.Save();
             }
 
+            _logger.LogInformation("Product created/updated successfully.");
             return Ok(new { success = true, message = "Product created/updated successfully" });
         }
 
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
+            _logger.LogInformation($"Deleting product with id {id}.");
             var productToBeDeleted = _unitOfWork.Product.Get(u => u.Id == id);
             if (productToBeDeleted == null)
             {
+                _logger.LogWarning($"Product with id {id} not found.");
                 return NotFound(new { success = false, message = "Error while deleting" });
             }
 
@@ -127,15 +142,18 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
             _unitOfWork.Product.Remove(productToBeDeleted);
             _unitOfWork.Save();
 
+            _logger.LogInformation("Product deleted successfully.");
             return Ok(new { success = true, message = "Delete Successful" });
         }
 
         [HttpDelete("DeleteImage/{imageId}")]
         public IActionResult DeleteImage(int imageId)
         {
+            _logger.LogInformation($"Deleting image with id {imageId}.");
             var imageToBeDeleted = _unitOfWork.ProductImage.Get(u => u.Id == imageId);
             if (imageToBeDeleted == null)
             {
+                _logger.LogWarning($"Image with id {imageId} not found.");
                 return NotFound(new { success = false, message = "Image not found" });
             }
 
@@ -153,12 +171,14 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
             _unitOfWork.ProductImage.Remove(imageToBeDeleted);
             _unitOfWork.Save();
 
+            _logger.LogInformation("Image deleted successfully.");
             return Ok(new { success = true, message = "Deleted successfully", productId = productId });
         }
 
         [HttpGet("GetView")]
         public IActionResult Index()
         {
+            _logger.LogInformation("Getting all products for view.");
             List<Product> objProductList = _unitOfWork.Product.GetAll(includeProperties: "Category").ToList();
             return Ok(objProductList);
         }
@@ -166,6 +186,7 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
         [HttpGet("UpsertView/{id?}")]
         public IActionResult Upsert(int? id)
         {
+            _logger.LogInformation($"Upsert view for product with id {id}.");
             ProductVM productVM = new()
             {
                 CategoryList = _unitOfWork.Category.GetAll().Select(u => new SelectListItem
@@ -185,6 +206,7 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
                 productVM.Product = _unitOfWork.Product.Get(u => u.Id == id, includeProperties: "ProductImages");
                 if (productVM.Product == null)
                 {
+                    _logger.LogWarning($"Product with id {id} not found.");
                     return NotFound();
                 }
                 return Ok(productVM);
@@ -194,6 +216,7 @@ namespace BulkyBookWeb.Areas.Admin.Controllers
         [HttpPost("UpsertView/{id?}")]
         public IActionResult UpsertView(int? id, [FromBody] ProductVM productVM, [FromForm] List<IFormFile> files)
         {
+            _logger.LogInformation($"Upsert view for product with id {id}.");
             if (ModelState.IsValid)
             {
                 if (productVM.Product.Id == 0)
