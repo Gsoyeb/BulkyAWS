@@ -21,13 +21,13 @@ export const dashboardRoutes = [
   {
     path: 'dashboard',
     element: (
-      <AuthGuard>
+      // <AuthGuard>
         <DashboardLayout>
           <Suspense fallback={<LoadingScreen />}>
             <Outlet />
           </Suspense>
         </DashboardLayout>
-      </AuthGuard>
+      // </AuthGuard>
     ),
     children: [
       { element: <IndexPage />, index: true },
