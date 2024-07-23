@@ -4,7 +4,8 @@ import { HOST_API } from 'src/config-global';
 
 // ----------------------------------------------------------------------
 
-const axiosInstance = axios.create({ baseURL: HOST_API });
+// const axiosInstance = axios.create({ baseURL: HOST_API });
+const axiosInstance = axios.create({ baseURL: 'https://localhost:44393' });
 
 axiosInstance.interceptors.response.use(
   (res) => res,
@@ -46,7 +47,8 @@ export const endpoints = {
     search: '/api/post/search',
   },
   product: {
-    list: '/api/product/list',
+    //list: '/api/product/list',
+    list: '/api/Product',
     details: '/api/product/details',
     search: '/api/product/search',
   },

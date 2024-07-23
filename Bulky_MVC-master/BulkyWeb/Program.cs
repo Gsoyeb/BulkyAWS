@@ -41,12 +41,24 @@ builder.Services.AddSwaggerGen(c => {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "BulkyBook API", Version = "v1" });
 });
 
+// Step 7: Configure CORS to allow requests from port 3000
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        builder =>
+        {
+            builder.WithOrigins("http://localhost:3000")
+                   .AllowAnyHeader()
+                   .AllowAnyMethod();
+        });
+});
+
 var app = builder.Build();  // Build the application
 
-// Step 7: Get a logger instance (Injection)
+// Step 8: Get a logger instance (Injection)
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-// Step 8: Configure the HTTP request pipeline.
+// Step 9: Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -56,21 +68,24 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();  // Redirect HTTP requests to HTTPS
 app.UseStaticFiles();  // Serve static files from wwwroot
 
-// Step 9: Configure Stripe API key
+// Step 10: Configure Stripe API key
 StripeConfiguration.ApiKey = builder.Configuration.GetSection("Stripe:SecretKey").Get<string>();
 
 app.UseRouting();
 
 app.UseSession();  // Enable session state
 
-// Step 10: Enable Swagger middleware
+// Step 11: Enable CORS middleware
+app.UseCors("AllowReactApp");
+
+// Step 12: Enable Swagger middleware
 app.UseSwagger();
 app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "BulkyBook API v1");
     c.RoutePrefix = string.Empty;  // Set Swagger UI at the app's root
 });
 
-// Step 11: Global error handling middleware
+// Step 13: Global error handling middleware
 app.Use(async (context, next) =>
 {
     try
@@ -85,12 +100,13 @@ app.Use(async (context, next) =>
     }
 });
 
-// Step 12: Map default controller route
+// Step 14: Map default controller route
 app.MapControllerRoute(
     name: "default",
     pattern: "{area=Customer}/{controller=Home}/{action=Index}/{id?}");
 
 app.Run();  // Run the application
+
 
 // ------------------------------------------------------------------
 // Commented out code for optional features

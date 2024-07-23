@@ -8,7 +8,7 @@ export default function Page() {
   return (
     <>
       <Helmet>
-        <title> Dashboard: One</title>
+        <title> Dashboard: Product</title>
       </Helmet>
 
       <OneView />
