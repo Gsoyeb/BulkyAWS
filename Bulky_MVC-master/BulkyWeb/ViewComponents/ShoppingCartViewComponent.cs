@@ -23,8 +23,10 @@ namespace BulkyBookWeb.ViewComponents {
                     _unitOfWork.ShoppingCart.GetAll(u => u.ApplicationUserId == claim.Value).Count());
                 }
                 
-                return View(HttpContext.Session.GetInt32(SD.SessionCart));
-            }
+                // Use null-coalescing operator to handle nullable int
+                int sessionCartValue = HttpContext.Session.GetInt32(SD.SessionCart) ?? 0;
+
+                return View(sessionCartValue);            }
             else {
                 HttpContext.Session.Clear();
                 return View(0);
